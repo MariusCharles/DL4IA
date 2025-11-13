@@ -32,7 +32,7 @@ class Transformer(nn.Module):
             return_attns=False, 
             learnable_query=False, 
             spectral_indices_embedding=False,
-            channels={"blue": 1, "red": 3, "near_infrared": 6, "swir1": 8}, 
+            channels={}, 
             compute_values=True):
 
         super().__init__()
