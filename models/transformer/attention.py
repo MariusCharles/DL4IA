@@ -1,4 +1,4 @@
-''' Define the sublayers in encoder/decoder layer 
+''' Define the attention layers used in the transformer model
 Source: https://github.com/jadore801120/attention-is-all-you-need-pytorch/
 '''
 
