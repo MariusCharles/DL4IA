@@ -19,19 +19,53 @@ class EmbeddingLayer(nn.Module):
         raise NotImplementedError
     
 
-class SpectralIndicesLayer(nn.Module):
-    '''TODO: compute features based on NDVI and BI time series from raw pixel set data:
-        - NDVI = (NIR - RED) / (NIR + RED)
-        - BI = ((SWIR1 + RED) - (NIR + BLUE)) / ((SWIR1 + RED) + (NIR + BLUE))
-    Concatenate pixel-wise spectral indices and pass output into a linear layer and 
-    a normalization layer.
+class NDVI(nn.Module):
+    '''TODO: compute NDVI time series from raw pixel set data.
+    NDVI = (NIR - RED) / (NIR + RED)
     '''
 
     def __init__(self):
-        super(SpectralIndicesLayer, self).__init__()
-        
+        super(NDVI, self).__init__()
 
-    def forward(self):
+    def forward(self, x):
+        """
+        Args:
+            x (torch.Tensor): batch_size x len_seq x n_channels x n_pixels data
+        """
+        raise NotImplementedError
+    
+
+class BI(nn.Module):
+    '''TODO: compute BI time series from raw pixel set data.
+    BI = ((SWIR1 + RED) - (NIR + BLUE)) / ((SWIR1 + RED) + (NIR + BLUE))
+    '''
+    def __init__(self):
+        super(BI, self).__init__()
+
+    def forward(self, x):
+        """
+        Args:
+            x (torch.Tensor): batch_size x len_seq x n_channels x n_pixels data
+        """
+        raise NotImplementedError
+    
+
+class SpectralIndicesLayer(nn.Module):
+    '''TODO: compute features based on NDVI and BI time series from raw pixel set data.
+    '''
+
+    def __init__(self, d_model, blue=1, red=2, near_infrared=6, swir1=8, eps=1e-3):
+        super(SpectralIndicesLayer, self).__init__()
+        self.ndvi = NDVI(red, near_infrared, eps)
+        self.bi = BI(blue, red, near_infrared, swir1, eps)
+        self.mlp = nn.Linear(2 * d_model, d_model)
+        self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
+
+    def forward(self, x):
+        """
+        Args:
+            x (torch.Tensor): batch_size x len_seq x n_channels x n_pixels data
+        """
         raise NotImplementedError
     
 
