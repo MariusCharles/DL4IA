@@ -23,7 +23,12 @@ Schedule (First edition, 2026)
 +--------------------------------------------+--------------------------------------------------------------------------+
 
 .. toctree::
-   :caption: Satellite Image Time Series Classification
+   :caption: SITS Classification
    :maxdepth: 1
 
    tutorials/sits_classification/sits_classification.ipynb
+
+   :caption: SSL of Visual Representations
+   :maxdepth: 1
+
+   tutorials/learning_visual_representations/learning_visual_representations.ipynb
