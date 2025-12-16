@@ -28,3 +28,11 @@ Schedule (First edition, 2026)
 
    tutorials/sits_classification/sits_classification.ipynb
    tutorials/learning_visual_representations/learning_visual_representations.ipynb
+
+
+Evaluation
+----------
+
+In groups of two, you will be randomly assigned one of the tutorial. You will have to complete the tutorial (in case you had not finished it 
+during class), and reproduce another experiment of your choice from the original paper. You will be evaluated on the quality of the code,
+of the presentation of your experiments, and on their interpretation.
