@@ -35,4 +35,4 @@ Evaluation
 
 In groups of two, you will be randomly assigned one of the tutorial. You will have to complete the tutorial (in case you had not finished it 
 during class), and reproduce another experiment of your choice from the original paper. You will be evaluated on the quality of the code,
-of the presentation of your experiments, and on their interpretation.
+the presentation of your experiments, and their interpretation.
