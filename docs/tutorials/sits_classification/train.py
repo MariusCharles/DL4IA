@@ -17,7 +17,7 @@ from models.transformer.transformer import Transformer
 from models.classifiers import ShallowClassifier
 
 from utils.focal_loss import FocalLoss
-from utils import get_flops, get_params
+from utils.utils import get_flops, get_params
 
 
 def main(cfg):

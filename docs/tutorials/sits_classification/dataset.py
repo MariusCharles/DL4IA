@@ -10,7 +10,7 @@ import numpy as np
 import os
 import collections.abc
 
-from utils import pad_tensor
+from utils.utils import pad_tensor
 
 
 class Padding:
