@@ -1,6 +1,7 @@
 '''Training script to complete.
 '''
 import os
+from pathlib import Path
 import pprint
 import argparse
 from tqdm import tqdm
@@ -18,10 +19,11 @@ from models.classifiers import ShallowClassifier
 
 from utils.focal_loss import FocalLoss
 from utils.utils import get_flops, get_params
-
+from sklearn.metrics import accuracy_score
 
 def main(cfg):
-    os.makedirs(os.path.dirname(cfg['res_dir']), exist_ok=True)
+    Path(cfg['res_dir']).mkdir(parents=True, exist_ok=True)
+
 
     with open(os.path.join(cfg['res_dir'], 'train_config.yaml'), 'w') as file:
         yaml.dump(cfg, file)
@@ -32,11 +34,17 @@ def main(cfg):
     padding = Padding(pad_value=cfg['pad_value'])
 
     train_data_loader = torch.utils.data.DataLoader(
-        ...
+        train_dataset,
+        collate_fn=padding.pad_collate,
+        batch_size=cfg['batch_size'],
+        shuffle=True
     )
 
     val_data_loader = torch.utils.data.DataLoader(
-        ...
+        val_dataset,
+        collate_fn=padding.pad_collate,
+        batch_size=4,
+        shuffle=False
     )
 
     encoder = Transformer(
@@ -51,7 +59,6 @@ def main(cfg):
         pad_value=cfg['pad_value'],
         scale_emb_or_prj=cfg['scale_emb_or_prj'],
         n_position=cfg['pos_embedding']['n_position'],
-        T=cfg['pos_embedding']['T'],
         return_attns=cfg['return_attns'],
         learnable_query=cfg['learnable_query'],
         spectral_indices_embedding=cfg['spectral_indices'],
@@ -101,7 +108,7 @@ def main(cfg):
 
         encoder.train()
         classifier.train()
-        train_loss, train_acc, val_loss, val_acc = 0, 0, 0, 0
+        train_loss, train_acc, val_loss, val_acc, n_pred = 0, 0, 0, 0, 0
 
         for data, doys, labels in tqdm(train_data_loader, desc=f"Epoch {epoch + 1}"):
             data = data.to(device)
@@ -111,15 +118,17 @@ def main(cfg):
             z, _ = encoder(data, doys)
             logits = classifier(z)
             loss = criterion(logits, labels)
-            pred = ...
-            accuracy = ...
-
+            pred = torch.argmax(logits, dim=1)
+            accuracy = (pred == labels).sum().item() 
+            n_pred += labels.size(0)
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
 
-            train_loss += loss.item() / len(train_data_loader)
-            train_acc += accuracy / len(train_data_loader)
+            train_loss += loss.item() 
+            train_acc += accuracy 
+        train_loss /= len(train_data_loader)
+        train_acc = train_acc / n_pred
 
         print("Train metrics - Loss: {:.4f} - Acc: {:.2f}".format(train_loss, train_acc))
         metrics['train']['loss'].append(train_loss)
@@ -127,6 +136,8 @@ def main(cfg):
 
         encoder.eval()
         classifier.eval()
+
+        n_pred = 0
         for data, doys, labels in tqdm(val_data_loader, desc=f"Validation"):
             data = data.to(device)
             doys = doys.to(device)
@@ -136,11 +147,13 @@ def main(cfg):
                 z, _ = encoder(data, doys)
                 logits = classifier(z)
             loss = criterion(logits, labels)
-            pred = ...
-            accuracy = ...
-
-            val_loss += loss.item() / len(val_data_loader)
-            val_acc += accuracy / len(val_data_loader)
+            pred = torch.argmax(logits, dim=1)
+            accuracy = (pred == labels).sum().item()
+            n_pred += labels.size(0)
+            val_loss += loss.item() 
+            val_acc += accuracy 
+        val_loss /= len(val_data_loader)
+        val_acc = val_acc / n_pred
 
         print("Val metrics - Loss: {:.4f} - Acc: {:.2f}".format(val_loss, val_acc))
         metrics['val']['loss'].append(val_loss)

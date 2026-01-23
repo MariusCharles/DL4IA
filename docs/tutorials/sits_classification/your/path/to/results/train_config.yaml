@@ -1,0 +1,35 @@
+batch_size: 64
+channels:
+  blue: 1
+  near_infrared: 6
+  red: 2
+  swir1: 8
+classifier:
+  d_inner: 128
+compute_values: false
+d_inner: 64
+d_k: 64
+d_model: 64
+d_v: 64
+data_folder: your/path/to/data
+device: cuda
+dropout: 0
+epochs: 15
+learnable_query: true
+loss:
+  gamma: 1
+lr: 1e-3
+max_len: 24
+n_channels: 10
+n_head: 8
+n_layers: 6
+n_pixels: 64
+pad_value: 0
+pos_embedding:
+  T: 1000
+  n_position: 365
+res_dir: your/path/to/results
+return_attns: false
+scale_emb_or_prj: prj
+spectral_indices: true
+val_split: 0.2

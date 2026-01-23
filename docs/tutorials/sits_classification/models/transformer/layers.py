@@ -12,53 +12,82 @@ class EmbeddingLayer(nn.Module):
     '''TODO: compute embeddings from raw pixel set data.
     '''
 
-    def __init__(self):
+    def __init__(self, n_channels, n_pixels, d_model):
         super(EmbeddingLayer, self).__init__()
-
+        self.d_model = d_model
+        self.linear = nn.Linear(n_channels * n_pixels, d_model)
+        
     def forward(self, x):
-        raise NotImplementedError
-    
+        batch_size, len_seq, n_channels, n_pixels = x.shape
+        x = x.view(batch_size * len_seq, n_channels*n_pixels)
+        x = F.relu(self.linear(x))
+        x = x.view(batch_size, len_seq, self.d_model)
+        return x
 
 class NDVI(nn.Module):
     '''TODO: compute NDVI time series from raw pixel set data.
     NDVI = (NIR - RED) / (NIR + RED)
     '''
 
-    def __init__(self):
+    def __init__(self, red, near_infrared,  eps=1e-6):
         super(NDVI, self).__init__()
+        self.eps = eps
+        self.red = red
+        self.near_infrared = near_infrared
 
     def forward(self, x):
         """
         Args:
             x (torch.Tensor): batch_size x len_seq x n_channels x n_pixels data
         """
-        raise NotImplementedError
+        RED = x[:, :, self.red, :]
+        NIR = x[:, :, self.near_infrared, :]
+
+        NDVI = (NIR - RED) / (NIR + RED + self.eps) # clipping 
+
+        return NDVI
     
 
 class BI(nn.Module):
     '''TODO: compute BI time series from raw pixel set data.
     BI = ((SWIR1 + RED) - (NIR + BLUE)) / ((SWIR1 + RED) + (NIR + BLUE))
     '''
-    def __init__(self):
+    def __init__(self, blue, red, near_infrared, swir, eps=1e-6):
         super(BI, self).__init__()
+        self.eps = eps
+        self.blue = blue
+        self.red = red
+        self.near_infrared = near_infrared
+        self.swir = swir
 
     def forward(self, x):
         """
         Args:
             x (torch.Tensor): batch_size x len_seq x n_channels x n_pixels data
         """
-        raise NotImplementedError
+        BLUE  = x[:, :, self.blue, :]
+        RED   = x[:, :, self.red, :]
+        NIR   = x[:, :, self.near_infrared, :]
+        SWIR1 = x[:, :, self.swir, :]
+
+        BI = ((SWIR1 + RED) - (NIR + BLUE)) / ((SWIR1 + RED) + (NIR + BLUE) + self.eps)
+
+        return BI
     
 
 class SpectralIndicesLayer(nn.Module):
     '''TODO: compute features based on NDVI and BI time series from raw pixel set data.
     '''
 
-    def __init__(self, d_model, blue=1, red=2, near_infrared=6, swir1=8, eps=1e-3):
+    def __init__(self, d_model, n_channels, n_pixels, blue=1, red=2, near_infrared=6, swir1=8, eps=1e-3):
         super(SpectralIndicesLayer, self).__init__()
         self.ndvi = NDVI(red, near_infrared, eps)
         self.bi = BI(blue, red, near_infrared, swir1, eps)
-        self.mlp = nn.Linear(2 * d_model, d_model)
+        self.mlp = nn.Sequential(
+            nn.Linear((2 + n_channels)*n_pixels, 2*d_model),
+            nn.ReLU(),
+            nn.Linear(2*d_model, d_model)
+        )
         self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
 
     def forward(self, x):
@@ -66,7 +95,17 @@ class SpectralIndicesLayer(nn.Module):
         Args:
             x (torch.Tensor): batch_size x len_seq x n_channels x n_pixels data
         """
-        raise NotImplementedError
+        batch_size, len_seq, _, _ = x.shape
+        NDVI = self.ndvi(x)
+        BI = self.bi(x)
+        features = torch.stack([NDVI, BI], dim=2)
+        x = torch.cat([x,features], dim=2)
+        x = x.view(batch_size, len_seq, -1)
+        out = self.mlp(x)
+        out = self.layer_norm(out)
+
+        return out 
+
     
 
 class PositionalEncoding(nn.Module):
@@ -75,7 +114,7 @@ class PositionalEncoding(nn.Module):
     TODO: Update the positional encoding as described in "Satellite Image Time Series 
     Classification with Pixel-Set Encoders and Temporal Self-Attention, Garnot et al."
     '''
-    def __init__(self, d_hid, n_position=200):
+    def __init__(self, d_hid, n_position=365):
         super(PositionalEncoding, self).__init__()
 
         # Not a parameter
@@ -85,7 +124,7 @@ class PositionalEncoding(nn.Module):
         ''' Sinusoid position encoding table '''
 
         def get_position_angle_vec(position):
-            return [position / np.power(10000, 2 * (hid_j // 2) / d_hid) for hid_j in range(d_hid)]
+            return [position / np.power(1000, 2 * (hid_j // 2) / d_hid) for hid_j in range(d_hid)]
 
         sinusoid_table = np.array([get_position_angle_vec(pos_i) for pos_i in range(n_position)])
         sinusoid_table[:, 0::2] = np.sin(sinusoid_table[:, 0::2])  # dim 2i
@@ -93,10 +132,17 @@ class PositionalEncoding(nn.Module):
 
         return torch.FloatTensor(sinusoid_table).unsqueeze(0)
 
-    def forward(self, x):
+    def forward(self, doys):
         """TODO: update forward function to return the positional embedding only.
         """
-        return x + self.pos_table[:, :x.size(1)].clone().detach()
+        # doys.shape -> taille du batch x longueur max des séquences
+        batch_size = doys.shape[0]
+        pos_table = self.pos_table                     # (1 x n_position x d_hid)
+        pos_table = pos_table.repeat(batch_size, 1, 1) # (batch_size x n_position x d_hid)
+        doys = doys.unsqueeze(-1).repeat(1, 1, pos_table.shape[-1])
+        doys = doys.long()
+        positional_embedding = torch.gather(pos_table, index=doys, dim=1)
+        return positional_embedding
     
 
 class Temporal_Aggregator(nn.Module):
@@ -108,9 +154,11 @@ class Temporal_Aggregator(nn.Module):
 
     def forward(self, data, mask):
         if self.mode == 'mean':
-            raise NotImplementedError
+            mask = (~mask).unsqueeze(-1).float()
+            sum = (data * mask).sum(dim=1)
+            out = sum / mask.sum(dim=1)
         elif self.mode == 'identity':
-            out = data
+            out = out = data.squeeze(1)
         else:
             raise NotImplementedError
         return out

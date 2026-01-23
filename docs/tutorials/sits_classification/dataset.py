@@ -61,8 +61,7 @@ class Padding:
 
         raise TypeError("Format not managed : {}".format(elem_type))
 
-
-class PixelSetData(Dataset):
+class PixelSetData(Dataset):    # créer dataset qui va hériter de la classe dataset de pytorch
     '''TODO: Complete the dataset class to load the S2-Agri Pixel-Set data.
     '''
     def __init__(self, folder, quantification_value=10000, set='train'):
@@ -75,7 +74,7 @@ class PixelSetData(Dataset):
         # https://gis.stackexchange.com/questions/233874/what-is-the-range-of-values-of-sentinel-2-level-2a-images
 
         if set == 'train':
-            labels = np.load(os.path.join(folder, 'train_labels.npy'))
+            labels = np.load(os.path.join(folder, 'train_labels.npy')) # (vecteur colonne qui contient autant de lignes que d'échantillons)
         elif set == 'test':
             labels = np.load(os.path.join(folder, 'test_labels.npy'))
         else:
@@ -95,8 +94,24 @@ class PixelSetData(Dataset):
         ]
 
 
-    def __len__(self):
-        raise NotImplementedError
+    def __len__(self):  # def méthode de len : fonction qui renvoie nb d'échantillons dans le dataset 
+        return len(self.labels)
     
-    def __getitem__(self, i):
-        raise NotImplementedError
+    def __getitem__(self, i): # def méthode : prend l'indice de l'échantillon et renvoie l'échantillon (ici la série temporelle, les jours de l'année correspondants et le label/classe de la parcelle)
+        
+
+        if self.set == 'train':
+            sample=torch.load(os.path.join(self.folder,"data",f"sample_{i}.pt")) 
+            doy=torch.load(os.path.join(self.folder,"data",f"doy_{i}.pt")) 
+
+        elif set == 'test':
+            sample=torch.load(os.path.join(self.folder,"test_data",f"sample_{i}.pt")) 
+            doy=torch.load(os.path.join(self.folder,"test_data",f"doy_{i}.pt")) 
+
+        else:
+            raise NotImplementedError
+        
+        label=self.labels[i]
+        sample=sample/self.quantification_value      # to obtain reflectance
+
+        return sample,doy,label

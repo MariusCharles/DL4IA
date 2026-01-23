@@ -5,13 +5,23 @@ from torch.utils.flop_counter import FlopCounterMode
 import numpy as np
 
 from typing import Union, Tuple, Optional, List
+from datetime import datetime
+
+from torch.utils.data import DataLoader
 
 
 def dates2doys(dates: list[str]):
-    '''TODO: convert a list of dates (list of str) 
-    to a list of days of year.
-    '''
-    raise NotImplementedError
+    """
+    Convert a list of dates (YYYY-MM-DD) to day of year (DOY).
+    """
+    doys = []
+    for date in dates:
+        month = date[5:7]
+        day = date[8:]
+        day = int(day) + 30*int(month)
+        doys.append(day)
+    return torch.tensor(doys).long()
+
 
 
 def pad_tensor(x: torch.Tensor, l: int, pad_value=0.):
@@ -45,7 +55,7 @@ def fill_ts(ts: torch.Tensor, doys: torch.Tensor, full_doys: torch.Tensor):
 def get_params(model: torch.nn.Module):
     '''TODO: compute the number of trainable parameters of a model.
     '''
-    raise NotImplementedError
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
 def get_flops(model, inp: Union[torch.Tensor, Tuple], with_backward=False):
@@ -117,3 +127,42 @@ def rgb_render(
         data_ready = data_ready[:, :, 0]
 
     return data_ready, out_dmin, out_dmax
+
+
+def mean_attention(encoder: torch.nn.Module,
+                   dataset: torch.utils.data.Dataset,
+                   classe: int,
+                   batch_size=32,
+                   device="cuda"):
+    """
+    Compute the mean attention for one classe based on a dataset
+
+    return:
+        weight: numpy array, weight for which head 
+    """
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    encoder.eval()
+
+    attn_sum = None
+    n_samples = 0
+
+    with torch.no_grad():
+        for data, doys, labels in loader:
+            mask = labels == classe
+            if mask.sum() == 0:
+                continue
+
+            data = data[mask].to(device)
+            doys = doys[mask].to(device)
+
+            _, attn = encoder(data, doys)
+            attn = attn.squeeze(2)  
+
+            if attn_sum is None:
+                attn_sum = attn.sum(dim=0)
+            else:
+                attn_sum += attn.sum(dim=0)
+
+            n_samples += attn.size(0)
+
+    return (attn_sum / n_samples).cpu().numpy()

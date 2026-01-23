@@ -28,8 +28,7 @@ class Transformer(nn.Module):
             dropout=0.1, 
             pad_value=0.,
             scale_emb_or_prj='prj', 
-            n_position=365, 
-            T=1000, 
+            n_position=365,
             return_attns=False, 
             learnable_query=False, 
             spectral_indices_embedding=False,
@@ -59,7 +58,7 @@ class Transformer(nn.Module):
         self.learnable_query = learnable_query
         
         if spectral_indices_embedding:
-            self.embedding = SpectralIndicesLayer(d_model, **channels)
+            self.embedding = SpectralIndicesLayer(d_model, n_channels, n_pixels, **channels)
         else:
             self.embedding = EmbeddingLayer(n_channels, n_pixels, d_model)
 
@@ -75,7 +74,7 @@ class Transformer(nn.Module):
                 for _ in range(n_layers)])
             self.temporal_aggregator = Temporal_Aggregator(mode='mean')
         
-        self.position_enc = PositionalEncoding(d_model, n_position=n_position, T=T)
+        self.position_enc = PositionalEncoding(d_model, n_position=n_position)
         self.dropout = nn.Dropout(p=dropout)
         self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
        
@@ -106,14 +105,14 @@ class Transformer(nn.Module):
         return enc_output
        
 
-    def forward(self, data, doys=None):
+    def forward(self, data, doys=None, pad_value=0.):
         '''TODO: implement the forward pass.
         '''
         if doys is None:
             doys = torch.zeros((data.shape[0], data.shape[1]))
 
-        embeddings = ...
-        temporal_mask = ...
+        embeddings = self.embedding(data)
+        temporal_mask = temporal_mask = (data.sum(dim=(-1, -2)) == pad_value)
         
         if self.return_attns:
             enc_output, attns = self.encoder(embeddings, doys, temporal_mask)
@@ -121,7 +120,7 @@ class Transformer(nn.Module):
             enc_output = self.encoder(embeddings, doys, temporal_mask)
             attns = None
 
-        enc_output = ...
+        enc_output = self.temporal_aggregator(enc_output, temporal_mask)
 
         return enc_output, attns
     
