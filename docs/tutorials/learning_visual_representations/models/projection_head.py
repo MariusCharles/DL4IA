@@ -11,6 +11,12 @@ class ProjectionHead(nn.Module):
     """
     def __init__(self, d_in, d_model=128):
         super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(d_in, d_in),
+            nn.ReLU(inplace=True),
+            nn.Linear(d_in, d_model)
+        )
+
 
     def forward(self, x: Tensor):
-        raise NotImplementedError
+        return self.net(x)

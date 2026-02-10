@@ -16,6 +16,26 @@ from datasets import SubsetImageNet
 from models.alexnet import alexnet
 from tqdm import tqdm
 
+import random
+import numpy as np
+import torch
+
+# Pour rendre l'entrainement reproductible
+# Util ici car le script est lancé depuis le terminal
+seed = 42
+
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+
+#  Si CUDA est utilisé /!\ ralentissement des performances possible /!\
+# torch.manual_seed(seed)
+# torch.cuda.manual_seed(seed)
+# torch.cuda.manual_seed_all(seed)
+# torch.backends.cudnn.deterministic = True
+# torch.backends.cudnn.benchmark = False
+
+
 
 def main(cfg):
     os.makedirs(os.path.dirname(cfg['res_dir']), exist_ok=True)
@@ -89,7 +109,7 @@ def main(cfg):
             'val': {
                 'loss': [],
                 'acc': []
-            }
+            } 
         }
 
     best_val_loss = np.inf
@@ -106,10 +126,10 @@ def main(cfg):
             data = data.to(device)
             labels = labels.to(device)
 
-            logits = ...
-            loss = ...
-            pred = ...
-            accuracy = ...
+            logits = model(data)
+            loss = F.cross_entropy(logits,labels.long())
+            pred = logits.argmax(dim=1)
+            accuracy = (pred == labels).float().mean()
 
             loss.backward()
             optimizer.step()
@@ -128,11 +148,11 @@ def main(cfg):
             labels = labels.to(device)
 
             with torch.no_grad():
-                logits = ...
+                logits = model(data)
 
-            loss = ...
-            pred = ...
-            accuracy = ...
+            loss = F.cross_entropy(logits,labels.long())
+            pred = logits.argmax(dim=1)
+            accuracy = (pred == labels).float().mean()
 
             val_loss += loss.item() / len(val_data_loader)
             val_acc += accuracy / len(val_data_loader)
@@ -153,7 +173,6 @@ def main(cfg):
     print("Best validation loss: {:.2f}".format(val_loss))
     print("Best validation accuracy: {:.2f}".format(val_acc))
 
-    ...
             
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

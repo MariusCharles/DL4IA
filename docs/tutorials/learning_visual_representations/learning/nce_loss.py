@@ -20,9 +20,21 @@ def nce_loss(
     LARGE_NUM = 1e9
     SMALL_NUM = 1e-9
 
-    # TODO: implement NT-Xent loss
+    batch_size = z1.size(0)
 
-    loss = F.cross_entropy(sim, targets)
+    z1 = F.normalize(z1, dim=1)
+    z2 = F.normalize(z2, dim=1)
+
+    z = torch.cat([z1, z2], dim=0)  
+    sim = torch.mm(z, z.T)
+    mask = torch.eye(2 * batch_size, device=z.device, dtype=torch.bool)
+    sim.masked_fill_(mask, -1e9)
+
+    targets = torch.arange(batch_size, device=z.device)
+    targets = torch.cat([targets + batch_size, targets])  
+
+    logits = sim / temperature
+    loss = F.cross_entropy(logits, targets)
     
     return loss
 

@@ -48,14 +48,14 @@ def main(cfg):
         device = 'cpu'
 
     model = alexnet(out=cfg['d_alexnet'], sobel=True, freeze_features=False)
-    pretrained_params = torch.load(cfg['pretrained_params'])
+    pretrained_params = torch.load(cfg['pretrained_params'], map_location=torch.device(device))
     model.load_state_dict(pretrained_params)
     model = model.to(device)
 
     projection_head = ProjectionHead(d_in=cfg['d_alexnet'], d_model=cfg['d_model']).to(device)
 
     optimizer = optim.Adam(
-        ..., 
+        list(model.parameters()) + list(projection_head.parameters()), 
         lr=float(cfg['lr'])
         )
 
@@ -82,10 +82,11 @@ def main(cfg):
             img1 = img1.to(device)
             img2 = img2.to(device)
 
-            h1, h2 = ...
-            z1, z2 = ...
 
-            loss = ...
+            h1, h2 = model(img1), model(img2)
+            z1, z2 = projection_head(h1), projection_head(h2)
+
+            loss = nce_loss(z1, z2)
 
             loss.backward()
             optimizer.step()
@@ -101,7 +102,7 @@ def main(cfg):
             torch.save({'epoch': epoch + 1, 
                         'model': model.state_dict(),
                         'optimizer': optimizer.state_dict()},
-                        os.path.join(cfg['res_dir'], 'best_model.pth.tar'))
+                        os.path.join(cfg['res_dir'], 'best_model_contrastive.pth.tar'))
             
             
 if __name__ == '__main__':

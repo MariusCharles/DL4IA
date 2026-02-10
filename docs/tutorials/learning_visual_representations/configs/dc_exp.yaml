@@ -1,8 +1,8 @@
 # Config file to test the performance of a random AlexNet on a subset of ImageNet.
 
 
-data_folder:
-labels_file:
+data_folder: "C:/Users/Lenovo/IODAA/data_TD3/data_td3/subset_imagenet"
+labels_file: "C:/Users/Lenovo/IODAA/data_TD3/data_td3/imagenet_labels.txt"
 
 subset_classes: [2, 3, 4, 6, 43, 203, 400, 600, 700, 800]
 data_mean: [0.485, 0.456, 0.406]
@@ -18,4 +18,4 @@ transforms:
   - normalize
 crop_size: 224
 n_classes: 10
-res_dir:
+res_dir: "C:/Users/Lenovo/IODAA/data_TD3/data_td3/dc_exp"

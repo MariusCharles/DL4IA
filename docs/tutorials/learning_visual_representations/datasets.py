@@ -3,7 +3,7 @@ import os
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset
-
+import torchvision.transforms.functional as TF
 import torchvision.transforms.v2 as T
 
 import numpy as np
@@ -36,13 +36,13 @@ class ImageNet(Dataset):
         img = read_image(file_path)
 
         # Convert to tensor
-        ...
+        img = torch.tensor(img)
 
         # Permute axis
-        ...
+        img = img.permute(2,0,1)
 
         # Convert to float in [0, 1]
-        ...
+        img = img.float() / 255.0
 
         if self.transform is not None:
             img = self.transform(img)
@@ -86,8 +86,8 @@ class ContrastiveDataset(SubsetImageNet):
 
     def __getitem__(self, i):
         img, _ = super().__getitem__(i)
-        img1 = ...
-        img2 = ...
+        img1 = self.view_transform(img)
+        img2 = self.view_transform(img)
         return img, img1, img2
 
 
@@ -133,8 +133,8 @@ class ImageNetMnist(SubsetImageNet):
                 random_digit_ind2 = np.where(self.mnist_labels != digit_label1)
                 random_digit_ind2 = random_digit_ind2[0][np.random.randint(len(random_digit_ind2[0]))]
                 digit2, digit_label2 = self.get_digit(random_digit_ind2)
-
-                ...
+                img2 = insert_digit(digit2, img1.clone())
+                imagenet_label2 = imagenet_label1
 
             elif self.shared_feature == 'digit':
                 random_ind = np.random.choice(
@@ -143,15 +143,27 @@ class ImageNetMnist(SubsetImageNet):
                         np.arange(i + 1, len(self))
                     )), size=1
                 )
-                
-                ...
+                img2, imagenet_label2 = super().__getitem__(random_ind[0])
+                img2 = insert_digit(digit1, img2)
+                digit_label2 = digit_label1
             
             else:
                 raise ValueError("If shared_feature is a string,\
                                 then the shared feature must either be 'background' or 'digit'")
         elif isinstance(self.shared_feature, list):
             if 'background' in self.shared_feature and 'digit' in self.shared_feature:
-                ...
+                random_digit_ind2 = np.where(self.mnist_labels != digit_label1)
+                random_digit_ind2 = random_digit_ind2[0][np.random.randint(len(random_digit_ind2[0]))]
+                digit2, digit_label2 = self.get_digit(random_digit_ind2)
+                random_ind = np.random.choice(
+                    np.concatenate((
+                        np.arange(i),
+                        np.arange(i + 1, len(self))
+                    )), size=1
+                )
+                img2, imagenet_label2 = super().__getitem__(random_ind[0])
+                img2 = insert_digit(digit2, img2)
+
             else:
                 raise ValueError("If shared_feature is a list,\
                                 then it must contain 'background' and 'digit'.")
@@ -175,13 +187,17 @@ class ImageNetMnist(SubsetImageNet):
         return imgs, labels
     
 
-def insert_digit(digit: torch.Tensor, img: torch.Tensor) -> torch.Tensor:
-    resize = T.Resize(img.shape[-1])
-    digit = resize(digit)
+def insert_digit(digit: torch.Tensor, img: torch.Tensor, size: int = 224) -> torch.Tensor:
+    # Resize digit pour correspondre à la taille finale
+    digit = TF.resize(digit, [size, size])
+    # Clone et resize l'image si nécessaire
+    if img.shape[-2:] != (size, size):
+        img = TF.resize(img, [size, size])
     image = torch.clone(img)
     image += digit
-    image = torch.clamp(image, min=0, max=1)
+    image = torch.clamp(image, 0, 1)
     return image
+
 
 
 def collate_views(batch: Iterable[dict[str, torch.Tensor]]) -> Tuple[dict[str, torch.Tensor], ...]:

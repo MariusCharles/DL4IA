@@ -15,7 +15,7 @@ from utils import get_params
 
 
 def main(cfg):
-    os.makedirs(os.path.dirname(cfg['res_dir']), exist_ok=True)
+    os.makedirs(cfg['res_dir'], exist_ok=True)
 
     with open(os.path.join(cfg['res_dir'], 'train_config.yaml'), 'w') as file:
         yaml.dump(cfg, file)
@@ -74,8 +74,8 @@ def main(cfg):
             kspace = kspace.to(device)
             target_image = target_image.to(device)
 
-            pred = ...
-            loss = ...
+            pred = model(kspace, mask)
+            loss = criterion(pred, target_image)
 
             loss.backward()
             optimizer.step()

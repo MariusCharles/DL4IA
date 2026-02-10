@@ -16,12 +16,12 @@ def compute_batch_activations(model, x, layer):
     current_layer = 1
     for m in model.features.modules():
         if not isinstance(m, nn.Sequential):
-            x = ...
+            x = m(x)
             if isinstance(m, nn.ReLU):
                 if current_layer == layer:
-                    activation = ...
+                     return x.mean(dim=[2,3]).data.cpu()
                 else:
-                    ...
+                    current_layer += 1
 
 
 def compute_activations_for_gradient_ascent(model, x, layer, filter_id):
@@ -32,18 +32,19 @@ def compute_activations_for_gradient_ascent(model, x, layer, filter_id):
     current_layer = 1
     for m in model.features.modules():
         if not isinstance(m, nn.Sequential):
-            x = ...
+            x = m(x)
             if isinstance(m, nn.Conv2d) and current_layer == layer:
-                activation = ...
+                activation = x
             if isinstance(m, nn.ReLU):
                 if current_layer == layer:
                     if x[:, filter_id, :, :].mean().data.cpu().numpy() == 0:
                         return activation
                     else:
-                        activation = ...
+                        activation = m(x)
                     return activation
                 else:
-                    ...
+                    current_layer += 1
+                    
 
 
 def compute_dataset_activations(model, dataset, layer, batch_size=64):
@@ -82,18 +83,19 @@ def maximize_img_response(model, img_size, layer, filter_id, device='cuda', n_it
         out = compute_activations_for_gradient_ascent(
             model, img, layer=layer, filter_id=filter_id
             )
-        target = torch.autograd.Variable(...).to(device)
-        loss = F.cross_entropy(out, target) + wd * ...
+        #target = torch.autograd.Variable(out).to(device)
+        loss = -out.mean() + wd * (img**2).sum()
 
         # compute gradient
-        ...
+        img.grad = None  # reset gradients
+        loss.backward()
 
         # normalize gradient
         grads = img.grad.data
         grads = grads.div(torch.norm(grads)+1e-8)
 
         # Update image
-        ...
+        img.data = img.data + lr * grads
 
         # Apply gaussian blur
         if it % reg_step == 0:

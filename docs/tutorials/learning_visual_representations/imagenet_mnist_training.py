@@ -58,7 +58,7 @@ def main(cfg):
         device = 'cpu'
 
     model = alexnet(out=cfg['d_model'], sobel=True, freeze_features=False)
-    pretrained_params = torch.load(cfg['pretrained_params'])
+    pretrained_params = torch.load(cfg['pretrained_params'], map_location=torch.device(device))
     pretrained_params['top_layer.weight'] = torch.randn(
         (cfg['d_model'], pretrained_params['top_layer.weight'].shape[1])
         ).to(device)
@@ -91,10 +91,11 @@ def main(cfg):
             img1 = imgs['view1'].to(device)
             img2 = imgs['view2'].to(device)
 
-            h1, h2 = ...
-            z1, z2 = ...
+            h1, h2 = model(img1), model(img2)
+            z1, z2 = projection_head(h1), projection_head(h2)
 
-            loss = ...
+            loss = nce_loss(z1, z2)
+
 
             loss.backward()
             optimizer.step()

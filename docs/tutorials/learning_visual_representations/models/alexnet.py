@@ -82,6 +82,8 @@ class AlexNet(nn.Module):
     def freeze_feature_layers(self):
         """TODO: complete.
         """
+        for layers in self.features.parameters():
+            layers.requires_grad = False
 
 
 def make_layers_features(cfg, input_dim, bn):

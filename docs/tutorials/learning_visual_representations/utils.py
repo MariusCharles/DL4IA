@@ -5,7 +5,7 @@ from numpy.typing import NDArray
 from typing import Union, Tuple, Callable
 
 import cv2
-import jpeg4py as jpeg
+#import jpeg4py as jpeg
 
 
 from tqdm import tqdm
@@ -13,14 +13,15 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
 
+
 def read_image(image_path: str) -> NDArray[np.uint8]:
     """Credit: github.com/xevolesi/alexnet_pytorch/blob/master/source/datasets/utils.py
     """
-    try:
-        image = jpeg.JPEG(image_path).decode()
-    except jpeg.JPEGRuntimeError:
-        image = cv2.imread(image_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    #try:
+    #    image = jpeg.JPEG(image_path).decode()
+    #except jpeg.JPEGRuntimeError:
+    image = cv2.imread(image_path)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     return image
 
 
